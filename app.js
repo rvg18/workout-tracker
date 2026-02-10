@@ -38,22 +38,23 @@ async function sheetsGet(range) {
 }
 
 async function sheetsUpdate(sheet, range, values) {
-    const res = await fetch(CONFIG.SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update', sheet, range, values }),
-        mode: 'no-cors'
+    const params = new URLSearchParams({
+        action: 'update',
+        sheet: sheet,
+        range: range,
+        values: JSON.stringify(values)
     });
+    await fetch(`${CONFIG.SCRIPT_URL}?${params}`, { redirect: 'follow' });
     return { success: true };
 }
 
 async function sheetsAppend(sheet, row) {
-    const res = await fetch(CONFIG.SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'append', sheet, row }),
-        mode: 'no-cors'
+    const params = new URLSearchParams({
+        action: 'append',
+        sheet: sheet,
+        row: JSON.stringify(row)
     });
+    await fetch(`${CONFIG.SCRIPT_URL}?${params}`, { redirect: 'follow' });
     return { success: true };
 }
 
