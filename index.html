@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a0f">
+    <title>Workout Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Dashboard View -->
+        <div id="dashboard-view" class="view">
+            <header>
+                <h1>WORKOUT TRACKER</h1>
+                <span id="sync-dot" class="sync-dot"></span>
+            </header>
+            <p class="subtitle">Progressive Overload System</p>
+
+            <div class="card">
+                <label>Current Streak</label>
+                <div class="streak-row">
+                    <span id="streak-count" class="big-number">...</span>
+                    <span class="unit">sessions</span>
+                    <span id="streak-fire" class="fire">🔥</span>
+                </div>
+                <div id="streak-warning" class="warning hidden">
+                    ⚠️ Streak at risk! Log a workout today.
+                </div>
+            </div>
+
+            <div class="card">
+                <label>This Week</label>
+                <div class="weekly-row">
+                    <div id="weekly-dots" class="dots"></div>
+                    <span id="weekly-text" class="weekly-text"></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <label>Total Weight Added</label>
+                <div class="stat-row">
+                    <span id="total-weight" class="big-number green">+0</span>
+                    <span class="unit">lbs across all exercises</span>
+                </div>
+                <p id="total-workouts" class="small-text"></p>
+            </div>
+
+            <div class="card">
+                <label>Recent Gains</label>
+                <div id="recent-gains"></div>
+            </div>
+
+            <div class="card">
+                <label>Activity</label>
+                <div id="calendar-grid" class="calendar"></div>
+            </div>
+
+            <button id="start-btn" class="primary-btn" onclick="startWorkout()">
+                START WORKOUT
+            </button>
+        </div>
+
+        <!-- Workout View -->
+        <div id="workout-view" class="view hidden">
+            <div class="date-picker">
+                <button onclick="adjustDate(-1)">←</button>
+                <input type="date" id="workout-date">
+                <button onclick="adjustDate(1)">→</button>
+            </div>
+
+            <div class="progress-header">
+                <span id="exercise-progress">1 / 9</span>
+                <span id="workout-time">00:00</span>
+            </div>
+            <div class="progress-bar">
+                <div id="progress-fill"></div>
+            </div>
+
+            <div class="card exercise-card">
+                <span id="exercise-type" class="exercise-type">Weighted</span>
+                <h2 id="exercise-name">SQUATS</h2>
+                <p id="current-weight" class="big-number">135</p>
+                <p id="weight-unit" class="unit">lbs</p>
+                <div class="target-badge">
+                    <span>Target:</span>
+                    <span id="target-reps" class="accent">20 reps</span>
+                </div>
+            </div>
+
+            <div id="rep-section" class="card">
+                <label>Reps Completed</label>
+                <div class="rep-counter">
+                    <button onclick="adjustReps(-1)" class="rep-btn">−</button>
+                    <span id="rep-count">0</span>
+                    <button onclick="adjustReps(1)" class="rep-btn">+</button>
+                </div>
+                <div class="quick-reps">
+                    <button onclick="setReps(10)">10</button>
+                    <button onclick="setReps(15)">15</button>
+                    <button onclick="setReps(18)">18</button>
+                    <button onclick="setReps(20)">20</button>
+                </div>
+            </div>
+
+            <div id="warmup-section" class="card hidden">
+                <label>Complete the target above</label>
+                <p class="small-text">Warmup - just hit the target and continue</p>
+            </div>
+
+            <div class="notes-section">
+                <button onclick="toggleNotes()" class="notes-toggle">
+                    <span id="notes-icon">▶</span> Add notes
+                </button>
+                <textarea id="notes" class="hidden" placeholder="Optional notes..."></textarea>
+            </div>
+
+            <button onclick="logExercise()" class="success-btn">LOG & NEXT →</button>
+            <button onclick="skipExercise()" class="secondary-btn">Skip Exercise</button>
+        </div>
+
+        <!-- Progress View -->
+        <div id="progress-view" class="view hidden">
+            <div class="view-header">
+                <h2>Progress</h2>
+                <button onclick="showDashboard()">✕</button>
+            </div>
+            <div id="progress-charts"></div>
+        </div>
+
+        <!-- History View -->
+        <div id="history-view" class="view hidden">
+            <div class="view-header">
+                <h2>History</h2>
+                <button onclick="showDashboard()">✕</button>
+            </div>
+            <div id="history-list"></div>
+        </div>
+
+        <!-- Level Up Modal -->
+        <div id="levelup-modal" class="modal hidden">
+            <div class="modal-content levelup">
+                <div class="modal-icon">🎯</div>
+                <h2>LEVEL UP!</h2>
+                <p id="levelup-text"></p>
+                <button onclick="closeLevelUp()" class="primary-btn">CONTINUE</button>
+            </div>
+        </div>
+
+        <!-- Complete Modal -->
+        <div id="complete-modal" class="modal hidden">
+            <div class="modal-content complete">
+                <div class="modal-icon">💪</div>
+                <h2>WORKOUT COMPLETE!</h2>
+                <div id="complete-stats"></div>
+                <button onclick="finishWorkout()" class="success-btn">DONE</button>
+            </div>
+        </div>
+
+        <!-- Bottom Nav -->
+        <nav id="bottom-nav">
+            <button onclick="showDashboard()" data-view="dashboard" class="active">
+                <span>🏠</span>Home
+            </button>
+            <button onclick="showProgress()" data-view="progress">
+                <span>📈</span>Progress
+            </button>
+            <button onclick="showHistory()" data-view="history">
+                <span>📋</span>History
+            </button>
+        </nav>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
