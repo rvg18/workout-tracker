@@ -2,7 +2,8 @@
 const CONFIG = {
     SHEET_ID: '1vthaeate4FYRdwDQbpOEdmrsF-3BZFBVpUptpdggR1Q',
     API_KEY: 'AIzaSyBNF1-kRMCulsLYMkbg5JKixX_78d7icxg',
-    SHEETS_API: 'https://sheets.googleapis.com/v4/spreadsheets'
+    SHEETS_API: 'https://sheets.googleapis.com/v4/spreadsheets',
+    SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwXCdKeexO9NtGHTznjLq38gwhL7UQdCPj0Za9DYk1DIBgYzXhppR790jQI_tUrbJ09/exec'
 };
 
 // ==================== EXERCISES ====================
@@ -36,26 +37,24 @@ async function sheetsGet(range) {
     return res.json();
 }
 
-async function sheetsUpdate(range, values) {
-    const url = `${CONFIG.SHEETS_API}/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW&key=${CONFIG.API_KEY}`;
-    const res = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values })
-    });
-    if (!res.ok) throw new Error(`Sheets API error: ${res.status}`);
-    return res.json();
-}
-
-async function sheetsAppend(range, values) {
-    const url = `${CONFIG.SHEETS_API}/${CONFIG.SHEET_ID}/values/${range}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS&key=${CONFIG.API_KEY}`;
-    const res = await fetch(url, {
+async function sheetsUpdate(sheet, range, values) {
+    const res = await fetch(CONFIG.SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values })
+        body: JSON.stringify({ action: 'update', sheet, range, values }),
+        mode: 'no-cors'
     });
-    if (!res.ok) throw new Error(`Sheets API error: ${res.status}`);
-    return res.json();
+    return { success: true };
+}
+
+async function sheetsAppend(sheet, row) {
+    const res = await fetch(CONFIG.SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'append', sheet, row }),
+        mode: 'no-cors'
+    });
+    return { success: true };
 }
 
 // ==================== DATA LOADING ====================
@@ -107,7 +106,7 @@ async function saveExerciseValue(exerciseId, newValue) {
         const exercisesData = await sheetsGet('Exercises!A2:A10');
         const rowIndex = exercisesData.values?.findIndex(row => row[0] === exerciseId);
         if (rowIndex !== -1) {
-            await sheetsUpdate(`Exercises!D${rowIndex + 2}`, [[newValue]]);
+            await sheetsUpdate('Exercises', `D${rowIndex + 2}`, [[newValue]]);
         }
         setSyncStatus('synced');
     } catch (err) {
@@ -119,7 +118,7 @@ async function saveExerciseValue(exerciseId, newValue) {
 async function saveLogEntry(entry) {
     setSyncStatus('syncing');
     try {
-        await sheetsAppend('Log!A:G', [[
+        await sheetsAppend('Log', [
             entry.date,
             entry.timestamp,
             entry.exerciseId,
@@ -127,7 +126,7 @@ async function saveLogEntry(entry) {
             entry.reps,
             entry.notes,
             entry.progressed ? 'TRUE' : 'FALSE'
-        ]]);
+        ]);
         setSyncStatus('synced');
     } catch (err) {
         console.error('Save log failed:', err);
