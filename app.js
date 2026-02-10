@@ -44,8 +44,12 @@ async function sheetsUpdate(sheet, range, values) {
         range: range,
         values: JSON.stringify(values)
     });
-    await fetch(`${CONFIG.SCRIPT_URL}?${params}`, { redirect: 'follow' });
-    return { success: true };
+    const url = `${CONFIG.SCRIPT_URL}?${params}`;
+    console.log('Update URL:', url);
+    const res = await fetch(url, { redirect: 'follow' });
+    const text = await res.text();
+    console.log('Update response:', text);
+    return JSON.parse(text);
 }
 
 async function sheetsAppend(sheet, row) {
@@ -54,8 +58,12 @@ async function sheetsAppend(sheet, row) {
         sheet: sheet,
         row: JSON.stringify(row)
     });
-    await fetch(`${CONFIG.SCRIPT_URL}?${params}`, { redirect: 'follow' });
-    return { success: true };
+    const url = `${CONFIG.SCRIPT_URL}?${params}`;
+    console.log('Append URL:', url);
+    const res = await fetch(url, { redirect: 'follow' });
+    const text = await res.text();
+    console.log('Append response:', text);
+    return JSON.parse(text);
 }
 
 // ==================== DATA LOADING ====================
@@ -132,7 +140,7 @@ async function saveLogEntry(entry) {
     } catch (err) {
         console.error('Save log failed:', err);
         setSyncStatus('error');
-        alert('Failed to save - check connection');
+        alert('Failed to save: ' + err.message);
     }
 }
 
