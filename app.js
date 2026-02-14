@@ -1,10 +1,4 @@
-// ==================== CONFIG ====================
-const CONFIG = {
-    SHEET_ID: '1vthaeate4FYRdwDQbpOEdmrsF-3BZFBVpUptpdggR1Q',
-    API_KEY: 'AIzaSyBNF1-kRMCulsLYMkbg5JKixX_78d7icxg',
-    SHEETS_API: 'https://sheets.googleapis.com/v4/spreadsheets',
-    SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwXCdKeexO9NtGHTznjLq38gwhL7UQdCPj0Za9DYk1DIBgYzXhppR790jQI_tUrbJ09/exec'
-};
+// CONFIG is loaded from config.js (not committed to git)
 
 // ==================== EXERCISES ====================
 const EXERCISES = [
