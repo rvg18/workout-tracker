@@ -29,6 +29,7 @@ let state = {
     currentSessionLog: [],
     pendingValueUpdates: {},
     workoutStartTime: null,
+    logging: false,
 };
 
 // ==================== SHEETS API ====================
@@ -94,7 +95,7 @@ async function loadState() {
     setSyncStatus('syncing');
     try {
         // Load exercises (current values)
-        const exercisesData = await sheetsGet('Exercises!A2:G10');
+        const exercisesData = await sheetsGet('Exercises!A2:G20');
         if (exercisesData.values) {
             exercisesData.values.forEach(row => {
                 const id = row[0];
@@ -135,7 +136,7 @@ async function saveExerciseValue(exerciseId, newValue) {
     setSyncStatus('syncing');
     try {
         // Find row index for this exercise
-        const exercisesData = await sheetsGet('Exercises!A2:A10');
+        const exercisesData = await sheetsGet('Exercises!A2:A20');
         const rowIndex = exercisesData.values?.findIndex(row => row[0] === exerciseId);
         if (rowIndex !== -1) {
             await sheetsUpdate('Exercises', `D${rowIndex + 2}`, [[newValue]]);
@@ -389,6 +390,20 @@ function updateExerciseDisplay() {
     document.getElementById('notes').value = '';
     document.getElementById('notes').classList.add('hidden');
     document.getElementById('notes-icon').textContent = '▶';
+
+    // Reset logging guard
+    state.logging = false;
+    const logBtn = document.getElementById('log-btn');
+    if (logBtn) {
+        logBtn.disabled = false;
+        logBtn.style.opacity = '1';
+    }
+
+    // Show/hide back button
+    const backBtn = document.getElementById('back-btn');
+    if (backBtn) {
+        backBtn.classList.toggle('hidden', state.currentExerciseIndex === 0 && state.currentSessionLog.length === 0);
+    }
 }
 
 function adjustDate(days) {
@@ -418,6 +433,14 @@ function toggleNotes() {
 }
 
 function logExercise() {
+    if (state.logging) return;
+    state.logging = true;
+    const logBtn = document.getElementById('log-btn');
+    if (logBtn) {
+        logBtn.disabled = true;
+        logBtn.style.opacity = '0.5';
+    }
+
     const exercise = EXERCISES[state.currentExerciseIndex];
     const value = state.currentValues[exercise.id] || exercise.startValue;
     const selectedDate = document.getElementById('workout-date').value;
@@ -475,6 +498,39 @@ function closeLevelUp() {
     nextExercise();
 }
 
+function goBack() {
+    if (state.currentExerciseIndex === 0 && state.currentSessionLog.length === 0) return;
+
+    // Remove last session log entry
+    const lastEntry = state.currentSessionLog.pop();
+    if (lastEntry) {
+        // Remove it from state.log too
+        const logIdx = state.log.lastIndexOf(lastEntry);
+        if (logIdx !== -1) state.log.splice(logIdx, 1);
+
+        // Undo progression if it happened
+        if (lastEntry.progressed) {
+            const exercise = EXERCISES.find(e => e.id === lastEntry.exerciseId);
+            if (exercise) {
+                state.currentValues[exercise.id] = lastEntry.value;
+                delete state.pendingValueUpdates[exercise.id];
+            }
+        }
+
+        // Go back to that exercise, pre-fill its reps
+        state.currentExerciseIndex = EXERCISES.findIndex(e => e.id === lastEntry.exerciseId);
+        state.currentReps = lastEntry.reps;
+    } else {
+        // No session entry but index > 0 (skipped exercise) — just go back one
+        state.currentExerciseIndex--;
+        state.currentReps = 0;
+    }
+
+    updateExerciseDisplay();
+    // Restore rep count after display update resets it
+    document.getElementById('rep-count').textContent = state.currentReps;
+}
+
 function skipExercise() {
     nextExercise();
 }
@@ -491,6 +547,7 @@ function nextExercise() {
 }
 
 async function showWorkoutComplete() {
+    state.logging = false;
     confetti({
         particleCount: 200,
         spread: 100,
@@ -535,7 +592,7 @@ async function saveWorkoutData() {
         // Save all exercise value updates
         const updates = Object.entries(state.pendingValueUpdates);
         if (updates.length > 0) {
-            const exercisesData = await sheetsGet('Exercises!A2:A10');
+            const exercisesData = await sheetsGet('Exercises!A2:A20');
             const updateList = [];
             for (const [exerciseId, newValue] of updates) {
                 const rowIndex = exercisesData.values?.findIndex(row => row[0] === exerciseId);

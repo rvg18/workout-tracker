@@ -243,6 +243,16 @@ header h1 {
     margin-top: 12px;
 }
 
+.workout-nav-row {
+    display: flex;
+    gap: 12px;
+}
+
+.workout-nav-row .secondary-btn {
+    flex: 1;
+    margin-top: 12px;
+}
+
 /* Date Picker */
 .date-picker {
     display: flex;

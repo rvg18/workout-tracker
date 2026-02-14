@@ -117,8 +117,11 @@
                 <textarea id="notes" class="hidden" placeholder="Optional notes..."></textarea>
             </div>
 
-            <button onclick="logExercise()" class="success-btn">LOG & NEXT →</button>
-            <button onclick="skipExercise()" class="secondary-btn">Skip Exercise</button>
+            <button id="log-btn" onclick="logExercise()" class="success-btn">LOG & NEXT →</button>
+            <div class="workout-nav-row">
+                <button id="back-btn" onclick="goBack()" class="secondary-btn hidden">← BACK</button>
+                <button onclick="skipExercise()" class="secondary-btn">Skip Exercise</button>
+            </div>
         </div>
 
         <!-- Progress View -->
