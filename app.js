@@ -354,20 +354,25 @@ function updateExerciseDisplay() {
     document.getElementById('progress-fill').style.width =
         `${((state.currentExerciseIndex + 1) / EXERCISES.length) * 100}%`;
 
-    const isWarmup = exercise.type.startsWith('warmup');
-    document.getElementById('rep-section').classList.toggle('hidden', isWarmup);
-    document.getElementById('warmup-section').classList.toggle('hidden', !isWarmup);
+    const isAutoWarmup = exercise.type.startsWith('warmup') && !exercise.targetReps;
+    document.getElementById('rep-section').classList.toggle('hidden', isAutoWarmup);
+    document.getElementById('warmup-section').classList.toggle('hidden', !isAutoWarmup);
 
     if (exercise.type === 'warmup_distance') {
         document.getElementById('exercise-type').textContent = 'Warm-up';
         document.getElementById('current-weight').textContent = value;
         document.getElementById('weight-unit').textContent = exercise.unit;
         document.getElementById('target-reps').textContent = 'Row this distance';
+    } else if (exercise.type === 'warmup_reps' && exercise.targetReps) {
+        document.getElementById('exercise-type').textContent = 'Warm-up';
+        document.getElementById('current-weight').textContent = value;
+        document.getElementById('weight-unit').textContent = 'reps target';
+        document.getElementById('target-reps').textContent = `${exercise.targetReps} reps to level up`;
     } else if (exercise.type === 'warmup_reps') {
         document.getElementById('exercise-type').textContent = 'Warm-up';
         document.getElementById('current-weight').textContent = value;
         document.getElementById('weight-unit').textContent = 'reps';
-        document.getElementById('target-reps').textContent = exercise.targetReps ? `${value} reps to level up` : 'Complete all reps';
+        document.getElementById('target-reps').textContent = 'Complete all reps';
     } else if (exercise.type === 'bodyweight') {
         document.getElementById('exercise-type').textContent = 'Bodyweight';
         document.getElementById('current-weight').textContent = value === 0 ? 'BW' : `BW+${value}`;
@@ -438,8 +443,8 @@ function logExercise() {
     const exercise = EXERCISES[state.currentExerciseIndex];
     const value = state.currentValues[exercise.id] || exercise.startValue;
     const selectedDate = document.getElementById('workout-date').value;
-    const isWarmup = exercise.type.startsWith('warmup');
-    const reps = isWarmup ? value : state.currentReps;
+    const isAutoWarmup = exercise.type.startsWith('warmup') && !exercise.targetReps;
+    const reps = isAutoWarmup ? value : state.currentReps;
 
     let progressed = false;
     let newValue = value;
