@@ -10,6 +10,7 @@ const CONFIG = {
 const EXERCISES = [
     { id: 'rower', name: 'Rower', type: 'warmup_distance', startValue: 500, increment: 20, unit: 'm' },
     { id: 'pushups', name: 'Pushups', type: 'warmup_reps', startValue: 25, increment: 2, unit: 'reps' },
+    { id: 'ab_wheel', name: 'Ab Wheel', type: 'warmup_reps', startValue: 20, increment: 5, unit: 'reps', targetReps: 20 },
     { id: 'squats', name: 'Squats', type: 'weighted', startValue: 135, increment: 5, unit: 'lbs', targetReps: 20 },
     { id: 'military_press', name: 'Military Press', type: 'weighted', startValue: 45, increment: 5, unit: 'lbs', targetReps: 20 },
     { id: 'bench_press', name: 'Bench Press', type: 'weighted', startValue: 135, increment: 5, unit: 'lbs', targetReps: 20 },
@@ -26,6 +27,7 @@ let state = {
     currentExerciseIndex: 0,
     currentReps: 0,
     currentSessionLog: [],
+    pendingValueUpdates: {},
     workoutStartTime: null,
 };
 
@@ -59,10 +61,31 @@ async function sheetsAppend(sheet, row) {
         row: JSON.stringify(row)
     });
     const url = `${CONFIG.SCRIPT_URL}?${params}`;
-    console.log('Append URL:', url);
     const res = await fetch(url, { redirect: 'follow' });
     const text = await res.text();
-    console.log('Append response:', text);
+    return JSON.parse(text);
+}
+
+async function sheetsBatchAppend(sheet, rows) {
+    const params = new URLSearchParams({
+        action: 'batchAppend',
+        sheet: sheet,
+        rows: JSON.stringify(rows)
+    });
+    const url = `${CONFIG.SCRIPT_URL}?${params}`;
+    const res = await fetch(url, { redirect: 'follow' });
+    const text = await res.text();
+    return JSON.parse(text);
+}
+
+async function sheetsBatchUpdate(updates) {
+    const params = new URLSearchParams({
+        action: 'batchUpdate',
+        updates: JSON.stringify(updates)
+    });
+    const url = `${CONFIG.SCRIPT_URL}?${params}`;
+    const res = await fetch(url, { redirect: 'follow' });
+    const text = await res.text();
     return JSON.parse(text);
 }
 
@@ -349,7 +372,7 @@ function updateExerciseDisplay() {
         document.getElementById('exercise-type').textContent = 'Warm-up';
         document.getElementById('current-weight').textContent = value;
         document.getElementById('weight-unit').textContent = 'reps';
-        document.getElementById('target-reps').textContent = 'Complete all reps';
+        document.getElementById('target-reps').textContent = exercise.targetReps ? `${value} reps to level up` : 'Complete all reps';
     } else if (exercise.type === 'bodyweight') {
         document.getElementById('exercise-type').textContent = 'Bodyweight';
         document.getElementById('current-weight').textContent = value === 0 ? 'BW' : `BW+${value}`;
@@ -394,7 +417,7 @@ function toggleNotes() {
     icon.textContent = notes.classList.contains('hidden') ? '▶' : '▼';
 }
 
-async function logExercise() {
+function logExercise() {
     const exercise = EXERCISES[state.currentExerciseIndex];
     const value = state.currentValues[exercise.id] || exercise.startValue;
     const selectedDate = document.getElementById('workout-date').value;
@@ -404,11 +427,11 @@ async function logExercise() {
     let progressed = false;
     let newValue = value;
 
-    if ((exercise.type === 'weighted' || exercise.type === 'bodyweight') && reps >= exercise.targetReps) {
+    if (exercise.targetReps && reps >= exercise.targetReps) {
         progressed = true;
         newValue = value + exercise.increment;
         state.currentValues[exercise.id] = newValue;
-        await saveExerciseValue(exercise.id, newValue);
+        state.pendingValueUpdates[exercise.id] = newValue;
     }
 
     const entry = {
@@ -424,7 +447,6 @@ async function logExercise() {
 
     state.log.push(entry);
     state.currentSessionLog.push(entry);
-    await saveLogEntry(entry);
 
     if (progressed) {
         showLevelUp(exercise, value, newValue);
@@ -468,7 +490,7 @@ function nextExercise() {
     }
 }
 
-function showWorkoutComplete() {
+async function showWorkoutComplete() {
     confetti({
         particleCount: 200,
         spread: 100,
@@ -483,13 +505,60 @@ function showWorkoutComplete() {
         <p>Exercises completed: ${state.currentSessionLog.length}</p>
         <p>Progressions: ${progressions} 🎯</p>
         <p>Current streak: ${streak} 🔥</p>
+        <p id="save-status">Saving...</p>
     `;
 
     document.getElementById('complete-modal').classList.remove('hidden');
     if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
+
+    // Batch save all data
+    await saveWorkoutData();
 }
 
-function finishWorkout() {
+async function saveWorkoutData() {
+    setSyncStatus('syncing');
+    try {
+        // Save all log entries
+        if (state.currentSessionLog.length > 0) {
+            const rows = state.currentSessionLog.map(entry => [
+                entry.date,
+                entry.timestamp,
+                entry.exerciseId,
+                entry.value,
+                entry.reps,
+                entry.notes,
+                entry.progressed ? 'TRUE' : 'FALSE'
+            ]);
+            await sheetsBatchAppend('Log', rows);
+        }
+
+        // Save all exercise value updates
+        const updates = Object.entries(state.pendingValueUpdates);
+        if (updates.length > 0) {
+            const exercisesData = await sheetsGet('Exercises!A2:A10');
+            const updateList = [];
+            for (const [exerciseId, newValue] of updates) {
+                const rowIndex = exercisesData.values?.findIndex(row => row[0] === exerciseId);
+                if (rowIndex !== -1) {
+                    updateList.push({ range: `D${rowIndex + 2}`, value: newValue });
+                }
+            }
+            if (updateList.length > 0) {
+                await sheetsBatchUpdate(updateList);
+            }
+        }
+
+        state.pendingValueUpdates = {};
+        setSyncStatus('synced');
+        document.getElementById('save-status').textContent = 'Saved!';
+    } catch (err) {
+        console.error('Save failed:', err);
+        setSyncStatus('error');
+        document.getElementById('save-status').textContent = 'Save failed - tap Done to retry';
+    }
+}
+
+async function finishWorkout() {
     document.getElementById('complete-modal').classList.add('hidden');
     stopTimer();
     showDashboard();
