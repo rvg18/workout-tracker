@@ -112,6 +112,7 @@ async function loadState() {
             })).filter(entry => entry.date);
         }
 
+        await applyTimeBasedProgressions();
         setSyncStatus('synced');
     } catch (err) {
         console.error('Load failed:', err);
@@ -124,6 +125,44 @@ async function loadState() {
         });
     }
     updateDashboard();
+}
+
+async function applyTimeBasedProgressions() {
+    const timeBasedExercises = EXERCISES.filter(ex =>
+        ex.type.startsWith('warmup') && !ex.targetReps
+    );
+
+    const updates = [];
+
+    for (const exercise of timeBasedExercises) {
+        const exerciseLogs = state.log.filter(l => l.exerciseId === exercise.id);
+        if (exerciseLogs.length === 0) continue;
+
+        const firstDateStr = exerciseLogs.reduce(
+            (min, l) => l.date < min ? l.date : min,
+            exerciseLogs[0].date
+        );
+        const firstTime = parseLocalDate(firstDateStr).getTime();
+        const weeksElapsed = Math.floor((Date.now() - firstTime) / (7 * 24 * 60 * 60 * 1000));
+        const expectedValue = exercise.startValue + weeksElapsed * exercise.increment;
+
+        const currentValue = state.currentValues[exercise.id] || exercise.startValue;
+        if (currentValue < expectedValue) {
+            state.currentValues[exercise.id] = expectedValue;
+            updates.push({ id: exercise.id, value: expectedValue });
+        }
+    }
+
+    if (updates.length > 0) {
+        const exercisesData = await sheetsGet('Exercises!A2:A20');
+        const updateList = updates.map(({ id, value }) => {
+            const rowIndex = exercisesData.values?.findIndex(row => row[0] === id);
+            return rowIndex !== -1 ? { range: `D${rowIndex + 2}`, value } : null;
+        }).filter(Boolean);
+        if (updateList.length > 0) {
+            await sheetsBatchUpdate(updateList);
+        }
+    }
 }
 
 async function saveExerciseValue(exerciseId, newValue) {
